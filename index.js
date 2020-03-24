@@ -2,6 +2,7 @@ const core = require('@actions/core');
 const { GitHub } = require('@actions/github');
 const fs = require('fs');
 
+
 async function run() {
     try {
         const github = new GitHub(process.env.GITHUB_TOKEN);
@@ -24,3 +25,5 @@ async function run() {
 }
 
 module.exports = run;
+
+run()
