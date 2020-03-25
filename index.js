@@ -81,7 +81,7 @@ async function run() {
         if (!asset)
             throw new Error(`The release has no asset named ${assetName}.`)
 
-        const headers = { authorization: null, 'Accept': 'application/octet-stream' }
+        const headers = { 'Accept': 'application/octet-stream' }
 
         core.info('Downloading asset')
         const assetResponse = await client.repos.getReleaseAsset({
