@@ -1,18 +1,19 @@
-const core = require('@actions/core');
-const github = require('@actions/github');
-const fs = require('fs');
-const path = require('path');
+const core = require('@actions/core')
+// const github = require('@actions/github')
+const { Octokit } = require('@octokit/rest')
+const fs = require('fs')
+const path = require('path')
 
 async function run() {
     try {
 
-        let workspacePath = process.env['GITHUB_WORKSPACE']
+        let workspacePath = process.env.GITHUB_WORKSPACE
         if (!workspacePath)
             throw new Error('GITHUB_WORKSPACE not defined.')
 
         workspacePath = path.resolve(workspacePath)
 
-        const repository = core.getInput('repository') || `${github.context.repo.owner}/${github.context.repo.repo}`
+        const repository = core.getInput('repository') || process.env.GITHUB_REPOSITORY
         const splitRepository = repository.split('/')
         if (splitRepository.length !== 2 || !splitRepository[0] || !splitRepository[1])
             throw new Error(`Invalid repository '${repository}'. Expected format {owner}/{repo}.`)
@@ -30,20 +31,30 @@ async function run() {
 
         assetPath = path.join(assetPath, assetName)
 
-        const token = core.getInput('token', { required: false }) || process.env['GITHUB_TOKEN']
+        // const token = core.getInput('token', { required: false }) || process.env.GITHUB_TOKEN
 
-        const client = new github.GitHub(token)
+        let payload = {};
+
+        if (process.env.GITHUB_EVENT_PATH)
+            if (fs.existsSync(process.env.GITHUB_EVENT_PATH))
+                payload = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, { encoding: 'utf8' }));
+            else
+                throw new Error(`GITHUB_EVENT_PATH ${process.env.GITHUB_EVENT_PATH} does not exist.`);
+
+
+        // const client = new github.GitHub(token)
+        const client = new Octokit()
 
         let release;
 
-        if (github.context.eventName.toLowerCase() === 'release') {
-            release = github.context.payload.release
+        if (process.env.GITHUB_EVENT_NAME.toLowerCase() === 'release') {
+            release = payload.release
             if (!release)
                 throw new Error('Unable to get release from event payload.')
         } else {
             const tag = core.getInput('tag', { required: false })
             if (!tag)
-                throw new Error(`Tag is required for '${github.context.eventName} events. It may only be ommitted for 'release' events.`)
+                throw new Error(`Tag is required for '${process.env.GITHUB_EVENT_NAME} events. It may only be ommitted for 'release' events.`)
 
             core.info('Getting release')
             const releaseResponse = await client.repos.getReleaseByTag({
@@ -70,7 +81,7 @@ async function run() {
         if (!asset)
             throw new Error(`The release has no asset named ${assetName}.`)
 
-        const headers = { 'Accept': 'application/octet-stream' }
+        const headers = { authorization: null, 'Accept': 'application/octet-stream' }
 
         core.info('Downloading asset')
         const assetResponse = await client.repos.getReleaseAsset({
@@ -80,13 +91,10 @@ async function run() {
             headers
         })
 
-        if (assetResponse.status == 300)
-            core.info('assetResponse.status == 300')
-
         if (assetResponse.status != 200)
             throw new Error(`Unexpected response from GitHub API. Status: ${assetResponse.status}, Data: ${assetResponse.data}`)
 
-        let fileData = Buffer.from(assetResponse.data) // response.data is ArrayBuffer
+        let fileData = Buffer.from(assetResponse) // response.data is ArrayBuffer
 
         core.info('Writing asset to disk')
         await fs.promises.writeFile(assetPath, fileData)

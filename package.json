@@ -19,6 +19,6 @@
   "homepage": "https://github.com/colbylwilliams/download-release-asset#readme",
   "dependencies": {
     "@actions/core": "^1.2.3",
-    "@actions/github": "^2.1.1"
+    "@octokit/rest": "^17.1.2"
   }
 }
