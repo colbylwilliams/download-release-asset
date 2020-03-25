@@ -81,24 +81,21 @@ async function run() {
         if (!asset)
             throw new Error(`The release has no asset named ${assetName}.`)
 
-        const headers = { 'Accept': 'application/octet-stream' }
-
         core.info('Downloading asset')
         const assetResponse = await client.repos.getReleaseAsset({
             asset_id: asset.id,
             owner: repo.owner,
             repo: repo.repo,
-            headers
+            headers: { Accept: 'application/octet-stream' }
         })
 
         if (assetResponse.status != 200)
             throw new Error(`Unexpected response from GitHub API. Status: ${assetResponse.status}, Data: ${assetResponse.data}`)
 
-        let fileData = Buffer.from(assetResponse) // response.data is ArrayBuffer
-
         core.info('Writing asset to disk')
-        await fs.promises.writeFile(assetPath, fileData)
 
+        let fileData = Buffer.from(assetResponse.data) // response.data is ArrayBuffer
+        await fs.promises.writeFile(assetPath, fileData)
         fileData = Buffer.from('') // Free memory
 
     } catch (error) {
