@@ -28,6 +28,8 @@ async function run() {
         if (!assetName)
             throw new Error('Name must be provided.')
 
+        assetPath = path.join(assetPath, assetName)
+
         const token = core.getInput('token', { required: false }) || process.env['GITHUB_TOKEN']
 
         const client = new github.GitHub(token)
